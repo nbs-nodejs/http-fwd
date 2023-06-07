@@ -1,0 +1,19 @@
+{
+  "name": "http-fwd",
+  "version": "1.0.0",
+  "description": "HTTP Forwarder forward request to 1 or more target hosts.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:image": "docker build -t nbsdev/http-fwd -f deployments/Dockerfile ."
+  },
+  "author": "Saggaf Arsyad <saggaf.arsyad@gmail.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "got": "^13.0.0",
+    "pino": "^8.14.1"
+  },
+  "type": "module"
+}

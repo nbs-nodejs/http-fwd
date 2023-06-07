@@ -1,0 +1,9 @@
+# Node
+node_modules/
+
+# IntelliJ Files
+.idea/
+*.iml
+
+# Application files
+.env
