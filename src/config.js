@@ -3,5 +3,5 @@ export const config = {
     CORS_ORIGIN: process.env.CORS_ORIGIN || "",
     TARGET_HOSTS: process.env.TARGET_HOSTS || "",
     RESPONSE: process.env.RESPONSE || "200",
-    RETURNS_SUCCESS_FIRST: process.env.RETURNS_SUCCESS_FIRST.toLowerCase() === "true",
+    RETURNS_SUCCESS_FIRST: (process.env.RETURNS_SUCCESS_FIRST || "false").toLowerCase() === "true",
 }

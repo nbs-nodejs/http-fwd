@@ -105,6 +105,7 @@ function main() {
     // Start server
     app.listen(config.PORT, () => {
         logger.info(`Serving on http://localhost:${config.PORT}`);
+        logger.info(`Response mode. AwaitForward=${response.awaitFwd} ReturnsSuccessFirst=${config.RETURNS_SUCCESS_FIRST}`)
     })
 }
 
