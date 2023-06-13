@@ -59,6 +59,11 @@ function main() {
                     if (!item || !item.statusCode) {
                         continue
                     }
+                    // Check if configured to return success response first
+                    if (config.RETURNS_SUCCESS_FIRST && item.statusCode === 200) {
+                        fwdResp = item
+                        break
+                    }
                     // Set error result and break
                     if (item.statusCode !== 200) {
                         fwdResp = item
