@@ -218,6 +218,7 @@ async function forwardRequest({host, path, method, headers, body}) {
     const u = `${host}${path}`
     try {
         const resp = await got(u, {
+            retry: {limit: 0},
             method,
             headers,
             body,
