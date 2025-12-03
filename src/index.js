@@ -1,17 +1,19 @@
 import express from "express";
 import cors from "cors";
-import {config} from "./config.js"
-import {logger} from "./logger.js";
-import got from "got";
+import { config } from "./config.js"
+import { logger } from "./logger.js";
+import http from "http";
+import https from "https";
 
 function main() {
     // Load config
     const targetHosts = initTargetHost(config.TARGET_HOSTS);
     const response = initResponse(config.RESPONSE);
+    const forwardedHeaderMap = initForwardedHeaderMap(config.FORWARDED_HEADER);
     // Init server
     const app = express();
     // Init middlewares
-    app.use(express.raw({verify: handleGetRawBody, type: '*/*'}));
+    app.use(express.raw({ verify: handleGetRawBody, type: '*/*' }));
     // Set-up cors
     if (config.CORS_ORIGIN) {
         const corsMiddleware = cors({
@@ -24,18 +26,39 @@ function main() {
     }
     // Init forwarder handler
     app.all(/(.*)/, (req, res) => {
-        // Clean request headers, remove reverse proxy headers
-        const headers = req.headers
-        headers["host"] = undefined
-        headers["x-scheme"] = undefined
-        headers["x-forwarded-for"] = undefined
-        headers["x-forwarded-proto"] = undefined
-        // --- Set forwarded from ip
-        headers["x-fwd-from-ip"] = req.headers["x-real-ip"]
-        // --- Set content-type
-        headers["content-type"] = req.headers["application/json"]
+        // Preserve original header casing using rawHeaders
+        const headers = {};
+        const rawHeaders = req.rawHeaders || [];
+
+        for (let i = 0; i < rawHeaders.length; i += 2) {
+            const headerName = rawHeaders[i];
+            const headerValue = rawHeaders[i + 1];
+
+            // Skip reverse proxy headers
+            const key = headerName.toLowerCase() 
+            switch (key) {
+                case 'host':
+                case 'x-scheme':
+                case 'x-forwarded-for':
+                case 'x-forwarded-proto': {
+                    continue;
+                }
+            }
+
+            if (forwardedHeaderMap && !forwardedHeaderMap[key]) {
+                continue
+            }
+
+
+            headers[headerName] = headerValue;
+        }
+
+        // Add custom header for forwarded IP
+        if (!forwardedHeaderMap && req.headers["x-real-ip"]) {
+            headers["x-fwd-from-ip"] = req.headers["x-real-ip"];
+        }
         // Get request path
-        const {method, originalUrl: path} = req
+        const { method, originalUrl: path } = req
         // Get request body
         let body;
         if (method.toLowerCase() !== "get") {
@@ -208,6 +231,22 @@ function initResponse(str) {
     return response
 }
 
+function initForwardedHeaderMap(str) {
+    if (!str) {
+        return null;
+    }
+
+    // Split string by comma
+    const rawHeaders = str.split(",");
+    // Validate url
+    const headerMap = {};
+    for (const h of rawHeaders) {
+        headerMap[h.toLowerCase()] = true;
+    }
+    logger.debug(`Forwarded Headers = ${JSON.stringify(headerMap)}`)
+    return headerMap
+}
+
 async function forwardRequest({ host, path, method, headers, body }) {
     logger.debug(`Request to send. Method=${method} Host=${host} Path=${path} Headers=${JSON.stringify(headers)} Body=${body}`)
     // Clean up path
@@ -219,7 +258,7 @@ async function forwardRequest({ host, path, method, headers, body }) {
     const u = `${host}${path}`
 
     return new Promise((resolve) => {
-    try {
+        try {
             const url = new URL(u);
             const isHttps = url.protocol === 'https:';
             const httpModule = isHttps ? https : http;
@@ -265,10 +304,10 @@ async function forwardRequest({ host, path, method, headers, body }) {
             }
 
             req.end();
-    } catch (err) {
-        logger.error(`Failed to Forward Request. Error=${err} TargetHost=${host}`)
+        } catch (err) {
+            logger.error(`Failed to Forward Request. Error=${err} TargetHost=${host}`)
             resolve(null);
-    }
+        }
     });
 }
 main();
