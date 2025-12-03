@@ -101,9 +101,17 @@ function main() {
                     res.send(response.body)
                     return
                 }
-                // Override content type if exists
-                res.set("content-type", fwdResp.headers["content-type"])
+                // Set status code
                 res.status(fwdResp.statusCode)
+                // Handle empty response body
+                if (!fwdResp.rawBody || fwdResp.rawBody.length === 0) {
+                    res.end()
+                    return
+                }
+                // Override content type if exists
+                if (fwdResp.headers["content-type"]) {
+                    res.set("content-type", fwdResp.headers["content-type"])
+                }
                 res.send(fwdResp.rawBody)
             })
             .catch(err => {
