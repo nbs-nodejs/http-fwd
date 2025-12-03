@@ -44,7 +44,7 @@ function main() {
         // Send to target hosts
         Promise.all(
             targetHosts.map(async (host) => {
-                return await forwardRequest({method, host, path, headers, body})
+                return await forwardRequest({ method, host, path, headers, body })
             }))
             .then(fwdResults => {
                 if (!response.awaitFwd) {
@@ -208,7 +208,8 @@ function initResponse(str) {
     return response
 }
 
-async function forwardRequest({host, path, method, headers, body}) {
+async function forwardRequest({ host, path, method, headers, body }) {
+    logger.debug(`Request to send. Method=${method} Host=${host} Path=${path} Headers=${JSON.stringify(headers)} Body=${body}`)
     // Clean up path
     if (!path.match(/^\//)) {
         path = "/" + path;
@@ -216,23 +217,58 @@ async function forwardRequest({host, path, method, headers, body}) {
         path = path.replace(/^\/+/, "/")
     }
     const u = `${host}${path}`
+
+    return new Promise((resolve) => {
     try {
-        const resp = await got(u, {
-            retry: {limit: 0},
-            method,
-            headers,
-            body,
-        })
-        logger.debug(`Request Forwarded. Method=${method} URL=${resp.url} HttpStatus=${resp.statusCode} ResponseBody=${resp.body}`)
-        return resp
+            const url = new URL(u);
+            const isHttps = url.protocol === 'https:';
+            const httpModule = isHttps ? https : http;
+
+            const options = {
+                hostname: url.hostname,
+                port: url.port || (isHttps ? 443 : 80),
+                path: url.pathname + url.search,
+                method: method,
+                headers: headers
+            };
+
+            logger.debug(`Sending request with headers: ${JSON.stringify(headers)}`);
+
+            const req = httpModule.request(options, (res) => {
+                let rawBody = '';
+
+                res.on('data', (chunk) => {
+                    rawBody += chunk;
+                });
+
+                res.on('end', () => {
+                    const response = {
+                        statusCode: res.statusCode,
+                        headers: res.headers,
+                        body: rawBody,
+                        rawBody: rawBody,
+                        url: u
+                    };
+
+                    logger.debug(`Got Response. Method=${method} URL=${u} HttpStatus=${res.statusCode} SentHeaders=${JSON.stringify(headers)} ResponseHeaders=${JSON.stringify(res.headers)} ResponseBody=${rawBody}`)
+                    resolve(response);
+                });
+            });
+
+            req.on('error', (err) => {
+                logger.error(`Failed to Forward Request. Error=${err} TargetHost=${host}`)
+                resolve(null);
+            });
+
+            if (body) {
+                req.write(body);
+            }
+
+            req.end();
     } catch (err) {
-        if (err.response) {
-            const resp = err.response
-            logger.debug(`Request Forwarded. Method=${method} URL=${resp.url} HttpStatus=${resp.statusCode} ResponseBody=${resp.body}`)
-            return err.response
-        }
         logger.error(`Failed to Forward Request. Error=${err} TargetHost=${host}`)
-        return null
+            resolve(null);
     }
+    });
 }
 main();
