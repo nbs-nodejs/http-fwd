@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:image": "docker build -t nbsdev/http-fwd -f deployments/Dockerfile ."
+    "build:image": "docker buildx build --platform linux/amd64,linux/arm64 -t nbsdev/http-fwd:latest -f deployments/Dockerfile . --push"
   },
   "author": "Saggaf Arsyad <saggaf.arsyad@gmail.com>",
   "license": "Apache-2.0",
