@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.3.0
+
+- fix: Handle empty body response
+- feat: Add config FORWARDED_HEADER to filter header sent to target
+- fix: Replace got with native nodejs http and https
+
 ## v0.2.1
 
 - fix: Set retry on error to 0
